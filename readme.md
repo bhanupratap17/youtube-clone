@@ -1,0 +1,1 @@
+MEAN stack based video sharing platform.
