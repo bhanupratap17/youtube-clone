@@ -1,6 +1,5 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import { Video } from "../models/video.model.js";
-import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandlers } from "../utils/asyncHandlers.js";
@@ -150,4 +149,158 @@ const publishVideo = asyncHandlers(async (req, res) => {
   }
 });
 
-export { getAllVideos, publishVideo };
+const getVideoById = asyncHandlers(async (req, res) => {
+  const { videoId } = req.params;
+
+  // 1 Get video id
+  // 2 Increase views
+  // 3 Fetch video
+  // 4 Fetch comments
+  // 5 Fetch comment owners
+  // 6 Fetch likes
+  // 7 Fetch channel owner
+  // 8 Count subscribers
+  // 9 Check if user liked
+  // 10 Check if user subscribed
+  // 11 Return everything in one response
+
+  if (req.user?._id) {
+    await Video.findOneAndUpdate({ _id: videoId }, { $inc: { views: 1 } });
+  }
+
+  const getVideoWithDetails = await Video.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(videoId),
+      },
+    },
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "video",
+        as: "comments",
+        pipeline: [
+          {
+            $sort: { createdAt: -1 },
+          },
+          {
+            $limit: 10,
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "CommentOwnerDetails",
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              CommentOwnerDetails: { $first: "$CommentOwnerDetails" },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              avatar: 1,
+              username: 1,
+            },
+          },
+          {
+            $lookup: {
+              from: "subscriptions",
+              localField: "_id",
+              foreignField: "channel",
+              as: "subscribers",
+            },
+          },
+          {
+            $addFields: {
+              subscriberCount: { $size: "$subscribers" },
+              isSubscribed: {
+                $cond: {
+                  if: {
+                    $in: [
+                      new mongoose.Types.ObjectId(req.user._id),
+                      "$subscribers.subscriber",
+                    ],
+                  },
+                  then: true,
+                  else: false,
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
+              subscriberCount: 1,
+              isSubscribed: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        totalLikes: { $size: "$likes" },
+        isLiked: {
+          $cond: {
+            if: {
+              $in: [
+                new mongoose.Types.ObjectId(req.user?._id),
+                "$likes.likedBy",
+              ],
+            },
+            then: true,
+            else: false,
+          },
+        },
+        owner: { $first: "$owner" },
+      },
+    },
+  ]);
+
+  if (getVideoWithDetails.length === 0) {
+    throw new ApiError(404, "Video doesn't exists");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        getVideoWithDetails[0],
+        "successfully fetched video details"
+      )
+    );
+});
+
+export { getAllVideos, publishVideo, getVideoById };
