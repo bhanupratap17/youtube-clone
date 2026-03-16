@@ -303,4 +303,122 @@ const getVideoById = asyncHandlers(async (req, res) => {
     );
 });
 
-export { getAllVideos, publishVideo, getVideoById };
+const updateVideo = asyncHandlers(async (req, res) => {
+  const { videoId } = req.params;
+  const { title, description, thumbnail } = req.body;
+
+  const userId = req.user?._id;
+
+  if (
+    title.trim() === "" ||
+    (!title && thumbnail.trim() === "") ||
+    (!thumbnail && !description)
+  ) {
+    throw new ApiError(400, "Required atleast one field to update");
+  }
+
+  const updateData = {};
+
+  if (title) {
+    updateData.title = title.trim();
+  }
+
+  if (description) {
+    updateData.description = description.trim();
+  }
+
+  if (thumbnail) {
+    updateData.thumbnail = thumbnail.trim();
+  }
+
+  const updateVideo = await Video.findOneAndUpdate(
+    {
+      _id: videoId,
+      owner: userId,
+    },
+    {
+      $set: updateData,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!updateVideo) {
+    throw new ApiError(
+      404,
+      "Video not found or you are not authorized to update this video"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, updateVideo, "Successfully updated video details")
+    );
+});
+
+const deleteVideo = asyncHandlers(async (req, res) => {
+  const { videoId } = req.params;
+  const userId = req.user?._id;
+
+  const video = await Video.findOneAndDelete({
+    _id: videoId,
+    owner: userId,
+  });
+
+  if (!video) {
+    throw new ApiError(
+      404,
+      "Video not found or you are not authorized to delete this video"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Successfully deleted video"));
+});
+
+const togglePublishStatus = asyncHandlers(async (req, res) => {
+  const { videoId } = req.params;
+  const userId = req.user?._id;
+
+  const toggleStatus = await Video.findOneAndUpdate(
+    {
+      _id: videoId,
+      owner: userId,
+    },
+    [
+      {
+        $set: {
+          isPublished: { $not: "$isPublished" },
+        },
+      },
+    ],
+    {
+      new: true,
+    }
+  );
+
+  if (!toggleStatus) {
+    throw new ApiError(
+      404,
+      "Video not found or you are not authorized to update this video"
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, toggleStatus, "Successfully toggled publish status")
+    );
+});
+
+export {
+  getAllVideos,
+  publishVideo,
+  getVideoById,
+  updateVideo,
+  deleteVideo,
+  togglePublishStatus,
+};
