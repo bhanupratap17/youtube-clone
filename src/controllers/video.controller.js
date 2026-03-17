@@ -309,12 +309,12 @@ const updateVideo = asyncHandlers(async (req, res) => {
 
   const userId = req.user?._id;
 
-  if (
-    title.trim() === "" ||
-    (!title && thumbnail.trim() === "") ||
-    (!thumbnail && !description)
-  ) {
-    throw new ApiError(400, "Required atleast one field to update");
+  const isTitleValid = title && title.trim() !== "";
+  const isDescriptionValid = description && description.trim() !== "";
+  const isThumbnailValid = thumbnail && thumbnail.trim() !== "";
+
+  if (!isTitleValid && !isDescriptionValid && !isThumbnailValid) {
+    throw new ApiError(400, "At least one field is required to update");
   }
 
   const updateData = {};
@@ -397,6 +397,7 @@ const togglePublishStatus = asyncHandlers(async (req, res) => {
     ],
     {
       new: true,
+      updatePipeline: true,
     }
   );
 
