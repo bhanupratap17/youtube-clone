@@ -47,4 +47,56 @@ const toggleSubscription = asyncHandlers(async (req, res) => {
   }
 });
 
-export { toggleSubscription };
+const getUserChannelSubscriber = asyncHandlers(async (req,res) => {
+    const { channelId } = req.params;
+
+    if (!isValidObjectId(channelId)) {
+      throw new ApiError(400, "Invalid channel Id");
+    }
+
+    const subscribers = await Subscription.aggregate([
+      {
+        $match: {
+          channel: new mongoose.Types.ObjectId(channelId),
+        },
+      },
+
+      {
+        $lookup: {
+          from: "users",
+          localField: "subscriber",
+          foreignField: "_id",
+          as: "subscriberDetails",
+        },
+      },
+
+      {
+        $unwind: "$subscriberDetails",
+      },
+
+      {
+        $project: {
+          _id: 0,
+          username: "$subscriberDetails.username",
+          avatar: "$subscriberDetails.avatar",
+        },
+      },
+    ]);
+
+    if (!subscribers) {
+      throw new ApiError(400, "Fetching Subscriber Failed");
+    }
+
+    return res
+      .status(200)
+      .json(
+         new ApiResponse(
+          200,
+          subscribers,
+          "Channel Subscribers fetched successfully"
+        )
+      );
+
+});
+
+export { toggleSubscription, getUserChannelSubscriber };

@@ -32,6 +32,6 @@ app.use("/api/v1/users",userRouter);
 app.use("/api/v1/videos",videoRouter);
 app.use("/api/v1/comments",commentRouter);
 app.use("/api/v1/likes",likeRouter);
-app.use("/api/v1/subscription",subscriptionRouter);
+app.use("/api/v1/subscription", subscriptionRouter);
 
 export {app}
