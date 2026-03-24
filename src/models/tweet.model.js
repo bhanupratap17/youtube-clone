@@ -13,4 +13,6 @@ owner:{
 
 }, { timestamps: true });
 
+tweetSchema.plugin(mongodbAggregatePaginate);
+
 export const Tweet = new mongoose("Tweet", tweetSchema);
