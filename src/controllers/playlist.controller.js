@@ -222,6 +222,24 @@ const removeVideoFromPlaylist = asyncHandlers(async (req, res) => {
     );
 });
 
+const deletePlaylist = asyncHandlers(async (req, res) => {
+  const { playlistId } = req.params;
+
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "Invalid PlaylistId");
+  }
+
+  const playlist = await Playlist.findByIdAndDelete(playlistId);
+
+  if (!playlist) {
+    throw new ApiError(400, "Removing Playlist Failed");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, playlist, "Playlist removed successfully"));
+});
+
 export {
   createPlaylist,
   getUserPlaylists,
@@ -229,4 +247,5 @@ export {
   addVideoToPlaylist,
   updatePlaylist,
   removeVideoFromPlaylist,
+  deletePlaylist,
 };
